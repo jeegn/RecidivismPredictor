@@ -6,14 +6,9 @@ from xgboost import XGBClassifier
 
 import Downsample
 import warnings
+import pickle
 
 warnings.filterwarnings('ignore')
-
-# Data Preprocessing
-df = pd.read_csv('synthetic data with time to recidivism.csv')
-df = df.iloc[:, 1:25]
-df['time_to_recidivism_months'] = df['time_to_recidivism_months'].replace(np.nan, 0)
-df['time_to_recidivism_category'] = df['time_to_recidivism_category'].replace(np.nan, "")
 
 
 def compare(i, cat):
@@ -31,24 +26,21 @@ def get_training_data(df, time):
     return X_train, y_train
 
 
+# Data Preprocessing
+df = pd.read_csv('synthetic data with time to recidivism.csv')
+df = df.iloc[:, 1:25]
+df['time_to_recidivism_months'] = df['time_to_recidivism_months'].replace(np.nan, 0)
+df['time_to_recidivism_category'] = df['time_to_recidivism_category'].replace(np.nan, "")
+
 # Encoding time specific data
 for i in range(0, 36, 3):
     df[f'recidivism_{i}'] = df['time_to_recidivism_category'].apply(lambda cat: compare(i, cat))
 
-# 12 models for time specific prediction
-params = {
-            'eta': 0.2,
-            'min_child_weight': 8,
-            'gamma': 5,
-            'max_depth': 5,
-            'objective': 'binary:logistic'
-        }
+# models for time specific prediction
 XGB = XGBClassifier(eta=0.2, min_child_weight=8, gamma=5, max_depth=5, objective='binary:logistic')
 
-X_train, y_train = get_training_data(df, 0)
-model_0 = XGB.fit(X_train, y_train)
-s = [25, 0] + [0]*19
-s = np.reshape(s,(1,21))
-prediction = model_0.predict_proba(s)
+for i in range(0, 36, 3):
+    X_train, y_train = get_training_data(df, i)
+    model = XGB.fit(X_train, y_train)
+    pickle.dump(model, open(f'Models/model{int(i/3) + 1}.clf', 'wb'))
 
-#def get_prediction(parameters):
